@@ -1,1 +1,155 @@
-= Lab 23 - Building a Simple Reverse Proxy with Zuul
+= Lab 23 - Building a Simple Reverse Proxy with Zuul.
+
+[abstract]
+--
+Now we'll begin using an embedded reverse proxy component called Zuul found in Spring Cloud.
+Zuul helps with a very common use case where a UI application wants to proxy calls to one or more back end services. This feature is useful for a user interface to proxy to the backend services it requires, avoiding the need to manage CORS and authentication concerns independently for all the backends.
+In this lab, we'll do the following:
+
+In this lab, we'll do the following:
+
+. Create a Springbox-UI app that will use Zuul to reverse proxy calls to the Springbox-catalog service
+. Retrieve Movies using the UI app url 
+--
+
+== Setup
+
+. Make sure that you are running locally config-server, eureka-server, and springbox-catalog like how it was set up in link:../../session_05/lab_16/lab_16.html[Lab 16].
+
+
+== Create a Springbox-UI application
+
+. Change to the lab directory:
++
+----
+$ cd $COURSE_HOME/day_02/session_08/lab_23/initial/springbox-ui
+----
++
+and import the project (via `pom.xml`) into your IDE of choice.
+
+. Open `pom.xml`, change the parent POM to the `spring-cloud-starter-parent`:
++
+----
+<parent>
+  <groupId>org.springframework.cloud</groupId>
+  <artifactId>spring-cloud-starter-parent</artifactId>
+  <version>1.0.0.RELEASE</version>
+  <relativePath/>
+  <!-- lookup parent from repository -->
+</parent>
+----
+
+. Add the following dependency to `pom.xml`:
++
+----
+	<dependency>
+		<groupId>org.springframework.cloud</groupId>
+		<artifactId>spring-cloud-starter</artifactId>
+	</dependency>
+	<dependency>
+		<groupId>org.springframework.cloud</groupId>
+		<artifactId>spring-cloud-starter-zuul</artifactId>
+	</dependency>
+----
+
+. Add a `@EnableZuulProxy` to the class `io.springbox.SpringboxUIApplication`.
+
+. Create the file `src/main/resources/application.yml` and into it paste the following:
++
+----
+server:
+  port: 8000
+  
+zuul:
+  routes:
+    movies:
+      path: /movies/**
+      stripPrefix: false
+      url: http://localhost:8080
+----
+
+. Run the application:
++
+----
+$ mvn spring-boot:run
+----
+
+=== Test without proxy
+
+. Make sure that the springbox-catalog app is running on port 8080. 
+. Using `curl`, test the springbox-catalog application and show that it is returning the movie.
++
+----
+$ curl -i localhost:8080/movies/1
+HTTP/1.1 200 OK
+Server: Apache-Coyote/1.1
+X-Application-Context: springbox-catalog
+Content-Type: application/json;charset=UTF-8
+Transfer-Encoding: chunked
+Date: Wed, 07 Oct 2015 23:45:14 GMT
+
+{
+    "genres": [
+        {
+            "id": 1003,
+            "mlId": "3",
+            "name": "Animation"
+        },
+        {
+            "id": 1004,
+            "mlId": "4",
+            "name": "Children's"
+        },
+        {
+            "id": 1005,
+            "mlId": "5",
+            "name": "Comedy"
+        }
+    ],
+    "id": 1000,
+    "mlId": "1",
+    "numberInStock": 10,
+    "title": "Toy Story (1995)"
+}
+----
+
+=== Reverse Proxy
+
+. Using `curl`, test the springbox-ui application and show that it is returning the movie.
++
+----
+$ curl -i localhost:8000/movies/1
+HTTP/1.1 200 OK
+Server: Apache-Coyote/1.1
+X-Application-Context: bootstrap:8000
+X-Application-Context: springbox-catalog
+Date: Wed, 07 Oct 2015 23:47:34 GMT
+Content-Type: application/json;charset=UTF-8
+Transfer-Encoding: chunked
+
+{
+    "genres": [
+        {
+            "id": 1003,
+            "mlId": "3",
+            "name": "Animation"
+        },
+        {
+            "id": 1004,
+            "mlId": "4",
+            "name": "Children's"
+        },
+        {
+            "id": 1005,
+            "mlId": "5",
+            "name": "Comedy"
+        }
+    ],
+    "id": 1000,
+    "mlId": "1",
+    "numberInStock": 10,
+    "title": "Toy Story (1995)"
+}
+----
+
+
