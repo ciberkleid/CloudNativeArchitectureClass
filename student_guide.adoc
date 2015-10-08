@@ -4,17 +4,17 @@ Student Guide
 
 == Instructor Details
 
-Matt Stine (@mstine) +
-Principal Engineer / Senior Project Manager - Pivotal +
-mstine@pivotal.io
+Cora Iberkleid +
+Senior Field Engineer - Pivotal +
+ciberkleid@pivotal.io
 
-Scott Frederick (@scottyfred) +
-Senior Software Engineer - Pivotal +
-sfrederick@pivotal.io
+Bjorn Boe +
+Senior Field Engineer - Pivotal +
+bboe@pivotal.io
 
-Vinicius Carvalho (@vccarvalho) +
-Field Engineer - Pivotal +
-vcarvalho@pivotal.io
+Yadhav Jayaraman +
+Senior Field Engineer - Pivotal +
+yjayaraman@pivotal.io
 
 == Schedule
 
@@ -23,14 +23,12 @@ This is _loose_ schedule for the two days. We will adjust as necessary based on 
 The lectures for this class are intentionally very light and are only intended to set the stage for the hands-on labs.
 The overwhelming majority of our time will be spent engaging with the technology directly!
 
-NOTE: We will be updating the course materials throughout the class. You will need to have the materials cloned and track the `citi` branch.
+NOTE: We will be updating the course materials throughout the class. You will need to have the materials cloned and track the `master` .
 
 This can be accomplished as follows:
 
 ----
-$ git clone https://github.com/mstine/CloudNativeArchitectureClass
-$ git fetch --all
-$ git checkout citi
+$ git clone https://github.com/ciberkleid/CloudNativeArchitectureClass.git
 ----
 
 === Day One
@@ -91,6 +89,6 @@ $ git checkout citi
 ** link:day_02/session_07/lab_22/lab_22.html[Lab 22 - Securing a Resource Server with Spring Cloud Security]
 * link:day_02/session_08/session_08.pdf[Session 8 Slides]
 ** link:day_02/session_08/lab_23/lab_23.html[Lab 23 - Building a Simple Reverse Proxy with Zuul]
-** link:day_02/session_08/lab_24/lab_24.html[Lab 24 - API Aggregation and Transformation with RxJava]
-** link:day_02/session_08/lab_25/lab_25.html[Lab 25 - Implementing OAuth2 SSO in the API Gateway with Spring Cloud Security]
-** link:day_02/session_08/lab_26/lab_26.html[Lab 26 - Icing on the Cake: Adding the User Interface]
+** link:day_02/session_08/lab_24/lab_24.html[Lab 24 - Icing on the Cake 1: Adding the User Interface]
+** link:day_02/session_08/lab_25/lab_25.html[Lab 25 - API Aggregation and Transformation with RxJava]
+** link:day_02/session_08/lab_26/lab_26.html[Lab 26 - Icing on the Cake 2: Completing the User Interface]
