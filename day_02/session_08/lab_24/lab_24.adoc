@@ -1,1 +1,178 @@
-= Lab 24 - API Aggregation and Transformation with RxJava
+= Lab 24 - Icing on the Cake 1: Adding the User Interface
+
+[abstract]
+--
+
+Now we'll begin to add user interface to Springbox-UI app. Let’s have a look at how to build a new single page application from nothing using Spring Boot, Angular JS and Twitter Bootstrap. There’s no particular reason to choose that specific stack, but it is quite popular, especially with the core Spring constituency in enterprise Java shops, so it’s a worthwhile starting point.
+
+In this lab, we'll do the following:
+
+. Change the Springbox-UI application from link:../../session_08/lab_23/lab_23.html[Lab 23] to:
+.. Add index.html for the single page application
+.. Use Angular $http service to make JSON calls
+. Test the new Springbox-UI app against Springbox-catalog 
+. Try swapping out the Zuul reverse proxy and see what happens
+
+--
+
+== Setup
+
+. A completed `springbox-config-server` project has been placed in `$COURSE_HOME/day_02/session_08/lab_24/initial/springbox-config-server` for your convenience.
+In a terminal window, change to that directory, rebuild, and run the application:
++
+----
+$ cd $COURSE_HOME/day_02/session_08/lab_24/initial/springbox-config-server
+$ mvn spring-boot:run
+----
+
+. A completed `springbox-eureka` project has been placed in `$COURSE_HOME/day_02/session_08/lab_24/initial/springbox-eureka` for your convenience.
+In a separate terminal window, change to that directory, rebuild, and run the application:
++
+----
+$ cd $COURSE_HOME/day_02/session_08/lab_24/initial/springbox-eureka
+$ mvn spring-boot:run
+----
+
+. A completed `springbox-catalog` project has been placed in `$COURSE_HOME/day_02/session_08/lab_24/initial/springbox-catalog` for your convenience.
+In a separate terminal window, change to that directory, rebuild, and run the application:
++
+----
+$ cd $COURSE_HOME/day_02/session_08/lab_24/initial/springbox-catalog
+$ mvn spring-boot:run
+----
+
+== Create a Single page application
+
+. Change to the lab directory:
++
+----
+$ cd $COURSE_HOME/day_02/session_08/lab_24/initial/springbox-ui
+----
++
+and import the project (via `pom.xml`) into your IDE of choice.
+
+. Create index.html under /src/main/resources/webapp and paste the following:
++
+----
+<!DOCTYPE html>
+<html lang="en" ng-app="springboxui">
+<head>
+  <meta charset="utf-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <!-- The above 3 meta tags *must* come first in the head; any other head content must come *after* these tags -->
+  <title>SpringBox</title>
+
+  <script src="https://ajax.googleapis.com/ajax/libs/angularjs/1.4.7/angular.min.js"></script>
+  <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.5/css/bootstrap.min.css" />
+
+  <!-- HTML5 shim and Respond.js for IE8 support of HTML5 elements and media queries -->
+  <!-- WARNING: Respond.js doesn't work if you view the page via file:// -->
+  <!--[if lt IE 9]>
+  <script src="https://oss.maxcdn.com/html5shiv/3.7.2/html5shiv.min.js"></script>
+  <script src="https://oss.maxcdn.com/respond/1.4.2/respond.min.js"></script>
+  <![endif]-->
+</head>
+<body ng-controller="CatalogController as catalog" class="container">
+  <h1>SpringBox Movies</h1>
+
+  <div ng-repeat="movie in catalog.movies">
+    <h2>{{movie.title}}</h1> <em class="pull-right">Number in Stock: {{movie.numberInStock}}</em>
+
+    <section ng-controller="PanelController as panel">
+      <ul class="nav nav-pills" >
+        <li ng-class="{active:panel.isSelected(1)}">
+          <a href ng-click="panel.tab = 1" >Genres</a>
+        </li>
+        <li ng-class="{active:panel.isSelected(2)}">
+          <a href ng-click="panel.tab = 2">Reviews</a>
+        </li>
+        <li ng-class="{active:panel.isSelected(3)}">
+          <a href ng-click="panel.tab = 3">Recommendations</a>
+        </li>
+      </ul>
+      <div class="well" ng-show="panel.isSelected(1)">
+        <h4>Genres</h4>
+        <p ng-repeat="genre in movie.genres">{{genre.name}}</p>
+      </div>
+      <div class="well" ng-show="panel.isSelected(2)">
+        <h4>Reviews</h4>
+      </div>
+      <div class="well" ng-show="panel.isSelected(3)">
+        <h4>Recommendations</h4>
+      </div>
+    </section>
+    <hr></div>
+
+  <script src="app.js"></script>
+</body>
+
+</html>
+----
+
+. Create app.js under /src/main/resources/webapp and paste the following:
++
+----
+(function(){
+  var movies = [{"id":1000,"title":"Toy Story (1995)","mlId":"1","genres":[{"id":1003,"mlId":"3","name":"Animation"},{"id":1004,"mlId":"4","name":"Children's"},{"id":1005,"mlId":"5","name":"Comedy"}],"numberInStock":10},
+                {"id":1001,"title":"GoldenEye (1995)","mlId":"2","genres":[{"id":1001,"mlId":"1","name":"Action"},{"id":1002,"mlId":"2","name":"Adventure"},{"id":1016,"mlId":"16","name":"Thriller"}],"numberInStock":10}
+  ];
+  var app = angular.module('springboxui', []);
+  app.controller('CatalogController', [function() {
+	    this.movies=movies;
+	    }]);
+  app.controller('PanelController', function() {
+	    this.tab=1;
+	    this.isSelected = function(tab) {
+	    	return this.tab === tab;
+	    }
+	    });
+
+})();
+----
+
+. Run the application:
++
+----
+$ mvn spring-boot:run
+----
+
+. Verify that the application:
++
+image::../../../Common/images/github_1.png[]
+
+
+== Modify the app to dynamically get movies from Springbox-catalog service
+
+. Modify app.js to use $http service to retrieve JSON of movies from Springbox-catalog service. Paste the following:
++
+----
+(function(){
+
+  var app = angular.module('springboxui', []);
+  app.controller('CatalogController', ["$http", function($http) {
+	    var self=this;
+	    self.movies=[];
+	    $http.get('/movies').then( function(response){
+	    	self.movies=response.data;
+	    }, function(errResponse) {
+	    	console.error('Error while getting movies')
+	    });
+	    }]);
+  app.controller('PanelController', function() {
+	    this.tab=1;
+	    this.isSelected = function(tab) {
+	    	return this.tab === tab;
+	    }
+	    });
+
+})();
+----
+
+== Swapping out the Zuul reverse proxy
+
+. Modify the app to remove the @Zuulproxy in SpringboxUIApplication.java
+. Does the application work, does changing the URL to http://localhost:8080/movies make it work?
+
+
+
