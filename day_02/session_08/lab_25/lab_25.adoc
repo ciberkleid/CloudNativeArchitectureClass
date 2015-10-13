@@ -1,1 +1,532 @@
-= Lab 25 - Implementing OAuth2 SSO in the API Gateway with Spring Cloud Security
+== Create an API Aggregation and Transformation server
+
+[abstract]
+--
+In this lab we'll create an API Aggregation and Transformation server which will aggregate the data from the Catalog, Reviews, and Recommendations services into one service. 
+This microservice will provide the _Movie Details Service_, which will allow us to get all the details for a movie in a single web service call.
+
+--
+
+NOTE: The completed code for this lab can be found at `$COURSE_HOME/day_02/session_08/lab_25/complete/springbox-integration`.
+
+
+== Developing the Service
+
+. Change to the lab directory:
++
+----
+$ cd $COURSE_HOME/day_02/session_08/lab_25/initial/springbox-integration
+----
++
+and import the project (via `pom.xml`) into your IDE of choice.
+
+. Open `pom.xml`, add the following dependencies:
++
+----
+		<dependency>
+			<groupId>org.springframework.cloud</groupId>
+			<artifactId>spring-cloud-starter-eureka</artifactId>
+		</dependency>
+		<dependency>
+			<groupId>org.springframework.cloud</groupId>
+			<artifactId>spring-cloud-commons</artifactId>
+		</dependency>
+		<dependency>
+			<groupId>org.springframework.cloud</groupId>
+			<artifactId>spring-cloud-starter-hystrix</artifactId>
+		</dependency>
+----
+
+. Create the package `io.springbox.integration.domain` and in that package create the class `Genre`. Into that file you can paste the following source code:
++
+----
+package io.springbox.integration.domain;
+
+public class Genre {
+
+	private Long id;
+
+	private String mlId;
+
+	private String name;
+
+	public Long getId() {
+		return id;
+	}
+
+	public String getMlId() {
+		return mlId;
+	}
+
+	public String getName() {
+		return name;
+	}
+
+	public void setId(Long id) {
+		this.id = id;
+	}
+
+	public void setMlId(String mlId) {
+		this.mlId = mlId;
+	}
+
+	public void setName(String name) {
+		this.name = name;
+	}
+
+}
+
+----
++
+
+. Also in the `io.springbox.integration.domain` package,  create the class `Movie`. Into that file you can paste the following source code:
++
+----
+package io.springbox.integration.domain;
+
+import java.util.List;
+
+public class Movie {
+
+	private Long id;
+
+	private String title;
+
+	private String mlId;
+
+	private List<Genre> genres;
+
+	private int numberInStock;
+
+	public Long getId() {
+		return id;
+	}
+
+	public void setId(Long id) {
+		this.id = id;
+	}
+
+	public String getTitle() {
+		return title;
+	}
+
+	public void setTitle(String title) {
+		this.title = title;
+	}
+
+	public String getMlId() {
+		return mlId;
+	}
+
+	public void setMlId(String mlId) {
+		this.mlId = mlId;
+	}
+
+	public List<Genre> getGenres() {
+		return genres;
+	}
+
+	public void setGenres(List<Genre> genres) {
+		this.genres = genres;
+	}
+
+	public int getNumberInStock() {
+		return numberInStock;
+	}
+
+	public void setNumberInStock(int numberInStock) {
+		this.numberInStock = numberInStock;
+	}
+
+}
+----
++
+
+. Also in the `io.springbox.integration.domain` package,  create the class `Review`. Into that file you can paste the following source code:
++
+----
+package io.springbox.integration.domain;
+
+
+public class Review {
+    private String id;
+
+    private String mlId;
+
+    private String userName;
+
+    private String title;
+
+    private String review;
+
+    private int rating;
+
+    public String getId() {
+        return id;
+    }
+
+    public void setId(String id) {
+        this.id = id;
+    }
+
+    public String getMlId() {
+        return mlId;
+    }
+
+    public void setMlId(String mlId) {
+        this.mlId = mlId;
+    }
+
+    public String getUserName() {
+        return userName;
+    }
+
+    public void setUserName(String userName) {
+        this.userName = userName;
+    }
+
+    public String getTitle() {
+        return title;
+    }
+
+    public void setTitle(String title) {
+        this.title = title;
+    }
+
+    public String getReview() {
+        return review;
+    }
+
+    public void setReview(String review) {
+        this.review = review;
+    }
+
+    public int getRating() {
+        return rating;
+    }
+
+    public void setRating(int rating) {
+        this.rating = rating;
+    }
+}
+----
++
+
+. Also in the `io.springbox.integration.domain` package,  create the class `MovieDetails`. Into that file you can paste the following source code:
++
+----
+package io.springbox.integration.domain;
+
+import java.util.List;
+
+public class MovieDetails {
+	private Movie movie;
+	private List<Review> reviews;
+	private List<Movie> recommendations;
+	
+	public Movie getMovie() {
+		return movie;
+	}
+	public void setMovie(Movie movie) {
+		this.movie = movie;
+	}
+	public List<Review> getReviews() {
+		return reviews;
+	}
+	public void setReviews(List<Review> reviews) {
+		this.reviews = reviews;
+	}
+	public List<Movie> getRecommendations() {
+		return recommendations;
+	}
+	public void setRecommendations(List<Movie> recommendations) {
+		this.recommendations = recommendations;
+	}
+}
+----
++
+
+
+. Now create the integration services that will call the back-end microservices. Create the following classes in `io.springbox.integration` package.
++
+----
+`CatalogIntegrationService`
+[source, java]
+
+package io.springbox.integration;
+
+import io.springbox.integration.domain.Movie;
+
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
+import org.springframework.web.client.RestTemplate;
+
+import rx.Observable;
+
+import com.netflix.hystrix.contrib.javanica.annotation.HystrixCommand;
+import com.netflix.hystrix.contrib.javanica.command.ObservableResult;
+
+@Service
+public class CatalogIntegrationService {
+	@Autowired
+	RestTemplate restTemplate;
+
+	@HystrixCommand(fallbackMethod = "stubMovie")
+	public Observable<Movie> getMovie(final String mlId) {
+		return new ObservableResult<Movie>() {
+			@Override
+			public Movie invoke() {
+				return restTemplate.getForObject(
+						"http://springbox-catalog/movies/{mlId}",
+						Movie.class, mlId);
+			}
+		};
+	}
+
+	private Movie stubMovie(final String mlId) {
+		Movie stub = new Movie();
+		stub.setMlId(mlId);
+		stub.setTitle("Interesting...the wrong title. Sssshhhh!");
+		return stub;
+	}
+}
+
+
+`RecommendationsIntegrationService`
+
+package io.springbox.integration;
+
+import io.springbox.integration.domain.Movie;
+
+import java.util.Arrays;
+import java.util.List;
+
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.core.ParameterizedTypeReference;
+import org.springframework.http.HttpMethod;
+import org.springframework.stereotype.Service;
+import org.springframework.web.client.RestTemplate;
+
+import rx.Observable;
+
+import com.netflix.hystrix.contrib.javanica.annotation.HystrixCommand;
+import com.netflix.hystrix.contrib.javanica.command.ObservableResult;
+
+@Service
+public class RecommendationsIntegrationService {
+	@Autowired
+	RestTemplate restTemplate;
+
+	@HystrixCommand(fallbackMethod = "stubRecommendations")
+	public Observable<List<Movie>> getRecommendations(final String mlId) {
+		return new ObservableResult<List<Movie>>() {
+			@Override
+			public List<Movie> invoke() {
+				ParameterizedTypeReference<List<Movie>> responseType = new ParameterizedTypeReference<List<Movie>>() {
+				};
+				return restTemplate
+						.exchange(
+								"http://springbox-recommendations:8082/recommendations/forMovie/{mlId}",
+								HttpMethod.GET, null, responseType, mlId)
+						.getBody();
+			}
+		};
+	}
+
+	private List<Movie> stubRecommendations(final String mlId) {
+		Movie one = new Movie();
+		one.setMlId("25");
+		one.setMlId("A movie which doesn't exist");
+		Movie two = new Movie();
+		two.setMlId("26");
+		two.setMlId("A movie about nothing");
+		return Arrays.asList(one, two);
+	}
+}
+
+
+`ReviewsIntegrationService`
+
+package io.springbox.integration;
+
+import io.springbox.integration.domain.Review;
+
+import java.util.Arrays;
+import java.util.List;
+
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.core.ParameterizedTypeReference;
+import org.springframework.http.HttpMethod;
+import org.springframework.stereotype.Service;
+import org.springframework.web.client.RestTemplate;
+
+import rx.Observable;
+
+import com.netflix.hystrix.contrib.javanica.annotation.HystrixCommand;
+import com.netflix.hystrix.contrib.javanica.command.ObservableResult;
+
+@Service
+public class ReviewsIntegrationService {
+	@Autowired
+	RestTemplate restTemplate;
+
+	@HystrixCommand(fallbackMethod = "stubReviews")
+	public Observable<List<Review>> reviewsFor(String mlId) {
+		return new ObservableResult<List<Review>>() {
+			@Override
+			public List<Review> invoke() {
+				ParameterizedTypeReference<List<Review>> responseType = new ParameterizedTypeReference<List<Review>>() {
+				};
+				List<Review> reviews = null;
+				try {
+					reviews = restTemplate.exchange(
+							"http://springbox-reviews/reviews/{mlId}",
+							HttpMethod.GET, null, responseType, mlId).getBody();					
+				} catch (Exception e) {
+					e.printStackTrace();
+					throw e;
+				}
+
+				
+				return reviews;
+			}
+		};
+	}
+
+	private List<Review> stubReviews(String mlId) {
+		Review review = new Review();
+		review.setMlId(mlId);
+		review.setRating(4);
+		review.setTitle("Interesting...the wrong title. Sssshhhh!");
+		review.setReview("Awesome sauce!");
+		review.setUserName("joeblow");
+		return Arrays.asList(review);
+	}
+}
+----
++
+
+
+. Now create the controller using Hystrix Observble and Hystrix future classes that will aggregate the results asynchronously. Create the following class in `io.springbox.integration` package.
++
+----
+package io.springbox.integration;
+
+import io.springbox.integration.domain.MovieDetails;
+
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.context.request.async.DeferredResult;
+
+import rx.Observable;
+
+@RestController
+public class MovieDetailsController {
+
+	@Autowired
+	CatalogIntegrationService catalogIntegrationService;
+
+	@Autowired
+	RecommendationsIntegrationService recommendationsIntegrationService;
+
+	@Autowired
+	ReviewsIntegrationService reviewsIntegrationService;
+
+	@RequestMapping("/movie/{mlId}")
+	public DeferredResult<MovieDetails> movieDetails(@PathVariable String mlId) {
+		Observable<MovieDetails> details = Observable.zip(
+				catalogIntegrationService.getMovie(mlId),
+				reviewsIntegrationService.reviewsFor(mlId),
+				recommendationsIntegrationService.getRecommendations(mlId), (
+						movie, reviews, recommendations) -> {
+					MovieDetails movieDetails = new MovieDetails();
+					movieDetails.setMovie(movie);
+					movieDetails.setReviews(reviews);
+					movieDetails.setRecommendations(recommendations);
+					return movieDetails;
+				});
+		DeferredResult<MovieDetails> deferredResult = new DeferredResult<MovieDetails>();
+		details.subscribe(movieInfo -> {
+		      System.out.println(movieInfo);
+		      deferredResult.setResult(movieInfo);
+		    },
+		    throwable -> {throwable.printStackTrace();
+		  });
+		return deferredResult;
+	}
+
+
+}
+----
++
+
+. Now open `src/main/resources/application.properties` and paste the following code:
++
+----
+server.port=9000
+spring.application.name=springbox-integration
+----
+
+. Run the application:
++
+----
+$ mvn spring-boot:run
+----
+
+. Using `curl`, test the consumer application and show that it is receiving values from the producers.
+Also, watch the producers and observe that Ribbon is performing round robin load balancing across the two producers:
++
+----
+$ curl -i localhost:9000/movie/1
+HTTP/1.1 200 OK
+Content-Length: 11
+Content-Type: application/json;charset=UTF-8
+Date: Tue, 24 Feb 2015 05:47:33 GMTServer: Apache-Coyote/1.1X-Application-Context: consumer:9000
+{
+    "movie": {
+        "genres": [
+            {
+                "id": 1003,
+                "mlId": "3",
+                "name": "Animation"
+            },
+            {
+                "id": 1004,
+                "mlId": "4",
+                "name": "Children's"
+            },
+            {
+                "id": 1005,
+                "mlId": "5",
+                "name": "Comedy"
+            }
+        ],
+        "id": 1000,
+        "mlId": "1",
+        "numberInStock": 10,
+        "title": "Toy Story (1995)"
+    },
+    "recommendations": [
+        {
+            "genres": null,
+            "id": 760,
+            "mlId": "2",
+            "numberInStock": 0,
+            "title": "GoldenEye (1995)"
+        }
+    ],
+    "reviews": [
+        {
+            "id": "5615e5b56580f18f5e6e1bb5",
+            "mlId": "1",
+            "rating": 5,
+            "review": "Great movie!",
+            "title": "Toy Story (1995)",
+            "userName": "mstine"
+        }
+    ]
+}
+----
+
