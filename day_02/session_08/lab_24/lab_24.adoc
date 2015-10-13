@@ -139,7 +139,7 @@ $ mvn spring-boot:run
 
 . Verify that the application:
 +
-image::../../../Common/images/github_1.png[]
+image::../../../Common/images/lab_24.png[]
 
 
 == Modify the app to dynamically get movies from Springbox-catalog service
