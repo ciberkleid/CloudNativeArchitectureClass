@@ -1,0 +1,12 @@
+server:
+  port: 8000
+  
+moviecatalog: tests
+
+zuul:
+  routes:
+    movies:
+      path: /movies/**
+      stripPrefix: false
+      url: http://localhost:8080
+      
