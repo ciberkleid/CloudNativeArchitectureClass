@@ -475,8 +475,7 @@ spring.application.name=springbox-integration
 $ mvn spring-boot:run
 ----
 
-. Using `curl`, test the consumer application and show that it is receiving values from the producers.
-Also, watch the producers and observe that Ribbon is performing round robin load balancing across the two producers:
+. Using `curl`, test the application and see if the application is bringing the aggregated results from the 3 microservices:
 +
 ----
 $ curl -i localhost:9000/movie/1
