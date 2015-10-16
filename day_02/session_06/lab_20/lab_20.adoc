@@ -57,12 +57,16 @@ $ mvn package
 $ java -jar target/hystrix-dashboard-0.0.1-SNAPSHOT.jar
 ----
 
-. Now, access the Hystrix Dashboard at http://localhost:7979.
+. Now, access the Hystrix Dashboard at http://localhost:7979/hystrix
 Enter http://localhost:8081/hystrix.stream into the text field  and click the ``Monitor Stream.''
 +
 image:../../../Common/images/fortunes_2.png[]
 
 . Using `curl`, test the consumer application several times and show that the circuit breaker is registering successful requests.
++
+----
+while true; do curl -i localhost:8081 && sleep 1; done;
+----
 +
 image:../../../Common/images/fortunes_3.png[]
 
