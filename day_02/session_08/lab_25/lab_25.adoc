@@ -249,10 +249,10 @@ public class MovieDetails {
 
 . Now create the integration services that will call the back-end microservices. Create the following classes in `io.springbox.integration` package.
 +
-----
 `CatalogIntegrationService`
++
 [source, java]
-
+----
 package io.springbox.integration;
 
 import io.springbox.integration.domain.Movie;
@@ -290,10 +290,11 @@ public class CatalogIntegrationService {
 		return stub;
 	}
 }
-
-
+----
++
 `RecommendationsIntegrationService`
-
++
+----
 package io.springbox.integration;
 
 import io.springbox.integration.domain.Movie;
@@ -343,10 +344,11 @@ public class RecommendationsIntegrationService {
 		return Arrays.asList(one, two);
 	}
 }
-
-
+----
++
 `ReviewsIntegrationService`
-
++
+----
 package io.springbox.integration;
 
 import io.springbox.integration.domain.Review;
