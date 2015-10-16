@@ -160,7 +160,7 @@ Next we'll import some data.
 
 == Importing Data
 
-. Add this https://github.com/cf-platform-eng/spring-boot-cities/blob/master/cities-service/src/main/resources/import.sql[import.sql file] to +src/main/resources+. This is a rather large dataset containing all of the postal codes in the United States and its territories. This file will automatically be picked up by Hibernate and imported into the in-memory database.
+. Add this https://github.com/cf-platform-eng/spring-boot-cities/blob/master/cities-service/src/main/resources/import.sql?raw=true[import.sql file] to +src/main/resources+. This is a rather large dataset containing all of the postal codes in the United States and its territories. This file will automatically be picked up by Hibernate and imported into the in-memory database.
 
 . Build the application:
 +
